@@ -1,0 +1,20 @@
+﻿"Test","Path","RequestBody","HttpStatus","ResponseBody","Passed","CurlExit"
+"op-add","/calc/op","{""id"":""t1"",""op"":""add"",""a"":3,""b"":4}","200","{""id"":""t1"",""result"":7,""error"":null}","True","0"
+"op-sub","/calc/op","{""id"":""t2"",""op"":""sub"",""a"":10,""b"":5}","200","{""id"":""t2"",""result"":5,""error"":null}","True","0"
+"op-mul","/calc/op","{""id"":""t3"",""op"":""mul"",""a"":6,""b"":7}","200","{""id"":""t3"",""result"":42,""error"":null}","True","0"
+"op-div","/calc/op","{""id"":""t4"",""op"":""div"",""a"":20,""b"":4}","200","{""id"":""t4"",""result"":5,""error"":null}","True","0"
+"op-divzero","/calc/op","{""id"":""t5"",""op"":""div"",""a"":1,""b"":0}","400","{""id"":""t5"",""result"":null,""error"":""DivisÃ£o por zero""}","True","0"
+"expr-1","/calc/expr","{""id"":""t6"",""expr"":""(2+3)*4/2 - 1""}","200","{""id"":""t6"",""result"":9,""error"":null}","True","0"
+"expr-2","/calc/expr","{""id"":""t7"",""expr"":""(10 + 5) * 5""}","200","{""id"":""t7"",""result"":75,""error"":null}","True","0"
+"expr-invalid","/calc/expr","{""id"":""t8"",""expr"":""2 + %% 3""}","400","{""id"":""t8"",""result"":null,""error"":""Caracter invÃ¡lido na expressÃ£o: %""}","True","0"
+"malformed-json","/calc/op","{""id"":""t9"",""op"": ""add"", ""a"": 1, ""b"": }","400","<!DOCTYPE html>
+<html lang=""en"">
+<head>
+<meta charset=""utf-8"">
+<title>Error</title>
+</head>
+<body>
+<pre>SyntaxError: Unexpected token } in JSON at position 37<br> &nbsp; &nbsp;at JSON.parse (&lt;anonymous&gt;)<br> &nbsp; &nbsp;at parse (C:\Users\emman\OneDrive\Ãrea de Trabalho\DistribuÃ­dos\Calculadora\node_modules\body-parser\lib\types\json.js:92:19)<br> &nbsp; &nbsp;at C:\Users\emman\OneDrive\Ãrea de Trabalho\DistribuÃ­dos\Calculadora\node_modules\body-parser\lib\read.js:128:18<br> &nbsp; &nbsp;at AsyncResource.runInAsyncScope (node:async_hooks:203:9)<br> &nbsp; &nbsp;at invokeCallback (C:\Users\emman\OneDrive\Ãrea de Trabalho\DistribuÃ­dos\Calculadora\node_modules\raw-body\index.js:238:16)<br> &nbsp; &nbsp;at done (C:\Users\emman\OneDrive\Ãrea de Trabalho\DistribuÃ­dos\Calculadora\node_modules\raw-body\index.js:227:7)<br> &nbsp; &nbsp;at IncomingMessage.onEnd (C:\Users\emman\OneDrive\Ãrea de Trabalho\DistribuÃ­dos\Calculadora\node_modules\raw-body\index.js:287:7)<br> &nbsp; &nbsp;at IncomingMessage.emit (node:events:517:28)<br> &nbsp; &nbsp;at endReadableNT (node:internal/streams/readable:1400:12)<br> &nbsp; &nbsp;at process.processTicksAndRejections (node:internal/process/task_queues:82:21)</pre>
+</body>
+</html>
+","False","0"
