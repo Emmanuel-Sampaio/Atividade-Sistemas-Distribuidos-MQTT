@@ -4,7 +4,6 @@ import com.google.gson.Gson;
 import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.ufc.calculadora.common.ExpressionEvaluator;
-import com.ufc.calculadora.common.SimpleCalculator;
 import static spark.Spark.*;
 
 public class HttpCalculatorServer {
@@ -12,7 +11,8 @@ public class HttpCalculatorServer {
     private final ExpressionEvaluator evaluator;
 
     public HttpCalculatorServer() {
-        this.evaluator = new ExpressionEvaluator(new SimpleCalculator());
+
+        this.evaluator = new ExpressionEvaluator();
     }
 
     public void start(int port) {
@@ -104,4 +104,5 @@ public class HttpCalculatorServer {
     public static void main(String[] args) {
         new HttpCalculatorServer().start(4567);
     }
+
 }

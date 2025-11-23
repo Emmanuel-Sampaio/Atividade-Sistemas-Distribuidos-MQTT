@@ -1,100 +1,185 @@
 package com.ufc.calculadora.common;
 
 import java.util.*;
-import java.util.regex.Pattern;
 
-
+/**
+ * Avaliador simples de expressões matemáticas.
+ * Suporta: +, -, *, /, ^, parênteses e números com ponto decimal.
+ * Implementa tokenização + shunting-yard para RPN + avaliação RPN.
+ * Lança IllegalArgumentException em caso de expressão inválida.
+ */
 public class ExpressionEvaluator {
-    private final CalculatorService calculator;
 
-    public ExpressionEvaluator(CalculatorService calculator) {
-        this.calculator = calculator;
+    public ExpressionEvaluator() {
+        // sem estado
     }
 
     public double evaluate(String expr) {
         if (expr == null) throw new IllegalArgumentException("Expressão nula");
-        List<String> rpn = infixToRPN(expr);
-        Deque<Double> stack = new ArrayDeque<>();
-        for (String token : rpn) {
-            if (isNumber(token)) {
-                stack.push(Double.parseDouble(token));
-            } else {
-                if (stack.size() < 2) throw new IllegalArgumentException("Expressão inválida");
-                double b = stack.pop();
-                double a = stack.pop();
-                double res;
-                switch (token) {
-                    case "+" -> res = calculator.add(a, b);
-                    case "-" -> res = calculator.subtract(a, b);
-                    case "*" -> res = calculator.multiply(a, b);
-                    case "/" -> res = calculator.divide(a, b);
-                    default -> throw new IllegalArgumentException("Operador não suportado: " + token);
-                }
-                stack.push(res);
-            }
-        }
-        if (stack.size() != 1) throw new IllegalArgumentException("Expressão inválida");
-        return stack.pop();
+        String s = expr.trim();
+        if (s.isEmpty()) throw new IllegalArgumentException("Expressão vazia");
+
+        List<Token> tokens = tokenize(s);
+        List<Token> rpn = toRPN(tokens);
+        return evalRPN(rpn);
     }
 
-    // Converte infix para RPN com shunting-yard
-    private List<String> infixToRPN(String expr) {
-        List<String> output = new ArrayList<>();
-        Deque<String> ops = new ArrayDeque<>();
-        String cleaned = expr.replaceAll("\\s+", "");
-        int i = 0;
-        while (i < cleaned.length()) {
-            char c = cleaned.charAt(i);
-            if (Character.isDigit(c) || c == '.' || ((c == '+' || c == '-') && (i == 0 || cleaned.charAt(i-1) == '(' || "+-*/".indexOf(cleaned.charAt(i-1)) >= 0))) {
-                int j = i + 1;
-                while (j < cleaned.length() && (Character.isDigit(cleaned.charAt(j)) || cleaned.charAt(j) == '.')) j++;
-                output.add(cleaned.substring(i, j));
+    // ---------- Tokenização ----------
+    private enum Type {NUMBER, OP, LPAREN, RPAREN}
+
+    private static class Token {
+        final Type type;
+        final String text;
+        final double value; // only for NUMBER
+
+        Token(Type type, String text) {
+            this(type, text, Double.NaN);
+        }
+        Token(Type type, String text, double value) {
+            this.type = type;
+            this.text = text;
+            this.value = value;
+        }
+
+        boolean isOperator() { return type == Type.OP; }
+    }
+
+    private List<Token> tokenize(String s) {
+        List<Token> out = new ArrayList<>();
+        int i = 0, n = s.length();
+        while (i < n) {
+            char c = s.charAt(i);
+            if (Character.isWhitespace(c)) { i++; continue; }
+            if (c == '(') {
+                out.add(new Token(Type.LPAREN, "(")); i++; continue;
+            }
+            if (c == ')') {
+                out.add(new Token(Type.RPAREN, ")")); i++; continue;
+            }
+            if (isOperatorChar(c)) {
+                String op = String.valueOf(c);
+                out.add(new Token(Type.OP, op)); i++; continue;
+            }
+            if (Character.isDigit(c) || c == '.') {
+                int j = i;
+                boolean dotSeen = false;
+                while (j < n) {
+                    char cj = s.charAt(j);
+                    if (cj == '.') {
+                        if (dotSeen) break;
+                        dotSeen = true;
+                        j++;
+                        continue;
+                    }
+                    if (Character.isDigit(cj)) { j++; continue; }
+                    break;
+                }
+                String numStr = s.substring(i, j);
+                try {
+                    double v = Double.parseDouble(numStr);
+                    out.add(new Token(Type.NUMBER, numStr, v));
+                } catch (NumberFormatException e) {
+                    throw new IllegalArgumentException("Número inválido: " + numStr);
+                }
                 i = j;
-            } else if ("+-*/".indexOf(c) >= 0) {
-                String o1 = String.valueOf(c);
-                while (!ops.isEmpty()) {
-                    String o2 = ops.peek();
-                    if (isOperator(o2) && (precedence(o1) <= precedence(o2))) {
+                continue;
+            }
+            throw new IllegalArgumentException("Token inválido na expressão em índice " + i + ": '" + c + "'");
+        }
+        return out;
+    }
+
+    private boolean isOperatorChar(char c) {
+        return c == '+' || c == '-' || c == '*' || c == '/' || c == '^';
+    }
+
+    // ---------- Shunting-yard to RPN ----------
+    private List<Token> toRPN(List<Token> tokens) {
+        List<Token> output = new ArrayList<>();
+        Deque<Token> ops = new ArrayDeque<>();
+
+        Token prev = null;
+        for (int i = 0; i < tokens.size(); i++) {
+            Token t = tokens.get(i);
+            if (t.type == Type.NUMBER) {
+                output.add(t);
+            } else if (t.type == Type.OP) {
+                String op = t.text;
+                // unary minus detection: treat "-x" as "0 - x"
+                if (op.equals("-") && (prev == null || prev.type == Type.OP || prev.type == Type.LPAREN)) {
+                    output.add(new Token(Type.NUMBER, "0", 0.0));
+                }
+                while (!ops.isEmpty() && ops.peek().type == Type.OP) {
+                    Token top = ops.peek();
+                    if ( (isLeftAssoc(op) && precedence(op) <= precedence(top.text))
+                            || (!isLeftAssoc(op) && precedence(op) < precedence(top.text)) ) {
                         output.add(ops.pop());
                     } else break;
                 }
-                ops.push(o1);
-                i++;
-            } else if (c == '(') {
-                ops.push("(");
-                i++;
-            } else if (c == ')') {
-                while (!ops.isEmpty() && !ops.peek().equals("(")) output.add(ops.pop());
-                if (ops.isEmpty() || !ops.peek().equals("(")) throw new IllegalArgumentException("Parênteses descompassados");
-                ops.pop(); // remove '('
-                i++;
-            } else {
-                throw new IllegalArgumentException("Caracter inválido na expressão: " + c);
+                ops.push(t);
+            } else if (t.type == Type.LPAREN) {
+                ops.push(t);
+            } else if (t.type == Type.RPAREN) {
+                boolean foundLeft = false;
+                while (!ops.isEmpty()) {
+                    Token pop = ops.pop();
+                    if (pop.type == Type.LPAREN) { foundLeft = true; break; }
+                    output.add(pop);
+                }
+                if (!foundLeft) throw new IllegalArgumentException("Parênteses desencontrados");
             }
+            prev = t;
         }
         while (!ops.isEmpty()) {
-            String t = ops.pop();
-            if (t.equals("(") || t.equals(")")) throw new IllegalArgumentException("Parênteses descompassados");
-            output.add(t);
+            Token p = ops.pop();
+            if (p.type == Type.LPAREN || p.type == Type.RPAREN) throw new IllegalArgumentException("Parênteses desencontrados");
+            output.add(p);
         }
         return output;
     }
 
-    private boolean isOperator(String s) {
-        return s != null && s.length() == 1 && "+-*/".contains(s);
-    }
-
     private int precedence(String op) {
-        return switch (op) {
-            case "+", "-" -> 1;
-            case "*", "/" -> 2;
-            default -> 0;
-        };
+        switch (op) {
+            case "+":
+            case "-": return 2;
+            case "*":
+            case "/": return 3;
+            case "^": return 4;
+            default: throw new IllegalArgumentException("Operador desconhecido: " + op);
+        }
     }
 
-    private boolean isNumber(String token) {
-        if (token == null) return false;
-        // simples verificação; aceita "-3.5", "2", ".5"
-        return Pattern.matches("[+-]?\\d*\\.?\\d+", token);
+    private boolean isLeftAssoc(String op) {
+        return !op.equals("^");
+    }
+
+    // ---------- Avaliação do RPN ----------
+    private double evalRPN(List<Token> rpn) {
+        Deque<Double> st = new ArrayDeque<>();
+        for (Token t : rpn) {
+            if (t.type == Type.NUMBER) {
+                st.push(t.value);
+            } else if (t.type == Type.OP) {
+                if (st.size() < 2) throw new IllegalArgumentException("Expressão inválida (operadores faltando operandos).");
+                double b = st.pop();
+                double a = st.pop();
+                double res;
+                switch (t.text) {
+                    case "+": res = a + b; break;
+                    case "-": res = a - b; break;
+                    case "*": res = a * b; break;
+                    case "/":
+                        if (b == 0.0) throw new IllegalArgumentException("Divisão por zero");
+                        res = a / b; break;
+                    case "^": res = Math.pow(a, b); break;
+                    default: throw new IllegalArgumentException("Operador desconhecido: " + t.text);
+                }
+                st.push(res);
+            } else {
+                throw new IllegalArgumentException("Token inesperado no RPN: " + t.text);
+            }
+        }
+        if (st.size() != 1) throw new IllegalArgumentException("Expressão inválida (pilha final com " + st.size() + " elementos).");
+        return st.pop();
     }
 }
