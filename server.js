@@ -39,6 +39,34 @@ app.use((req, res, next) => {
     next();
 });
 
+// --- Retry helper for evaluateExpression (opcional, cobre falhas internas/transientes) ---
+function evaluateWithRetry(expr, maxAttempts = 3) {
+    let lastErr = null;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+            return evaluateExpression(expr);
+        } catch (e) {
+            // se erro claramente de input, não retry
+            const msg = (e && e.message) ? e.message.toLowerCase() : '';
+            if (
+                msg.includes('numero malformado') ||
+                msg.includes('parênteses') ||
+                msg.includes('caracter inválido') ||
+                msg.includes('expressão vazia') ||
+                msg.includes('operandos') ||
+                msg.includes('divisão por zero') ||
+                msg.includes('operador desconhecido') ||
+                msg.includes('expressão inválida')
+            ) {
+                throw e;
+            }
+            lastErr = e;
+            // caso queira backoff, adicionar setTimeout/Promise aqui (omito para manter sync)
+        }
+    }
+    throw lastErr || new Error('Falha desconhecida ao avaliar expressão');
+}
+
 // POST /calc/op
 app.post('/calc/op', (req, res) => {
     const body = req.body;
@@ -90,10 +118,21 @@ app.post('/calc/expr', (req, res) => {
     }
     const expr = body.expr;
     try {
-        const result = evaluateExpression(expr);
+        // usa retry interno (3 tentativas) para falhas internas/transientes
+        const result = evaluateWithRetry(expr, 3);
         return jsonResponse(res, id, result, null, 200);
     } catch (e) {
-        return jsonResponse(res, id, null, e.message, 400);
+        // se erro de input, devolve 400; caso contrário, 500
+        const msg = (e && e.message) ? e.message.toLowerCase() : '';
+        const isClientError = msg.includes('numero malformado') ||
+            msg.includes('parênteses') ||
+            msg.includes('caracter inválido') ||
+            msg.includes('expressão vazia') ||
+            msg.includes('operandos') ||
+            msg.includes('divisão por zero') ||
+            msg.includes('operador desconhecido') ||
+            msg.includes('expressão inválida');
+        return jsonResponse(res, id, null, e.message, isClientError ? 400 : 500);
     }
 });
 

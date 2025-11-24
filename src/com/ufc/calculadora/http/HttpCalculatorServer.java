@@ -14,11 +14,6 @@ public class HttpCalculatorServer {
         this.evaluator = new ExpressionEvaluator();
     }
 
-    /**
-     * Retry apenas para falhas inesperadas. Não tenta para IllegalArgumentException (erro do cliente).
-     * maxAttempts: número total de tentativas (inclui a primeira).
-     * baseBackoffMs: backoff inicial (dobrando a cada tentativa), com jitter.
-     */
     private double evaluateWithRetry(String expr, int maxAttempts, long baseBackoffMs) {
         int attempt = 0;
         long backoff = baseBackoffMs;
