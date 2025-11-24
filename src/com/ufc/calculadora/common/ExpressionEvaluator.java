@@ -2,12 +2,7 @@ package com.ufc.calculadora.common;
 
 import java.util.*;
 
-/**
- * Avaliador simples de expressões matemáticas.
- * Suporta: +, -, *, /, ^, parênteses e números com ponto decimal.
- * Implementa tokenização + shunting-yard para RPN + avaliação RPN.
- * Lança IllegalArgumentException em caso de expressão inválida.
- */
+
 public class ExpressionEvaluator {
 
     public ExpressionEvaluator() {

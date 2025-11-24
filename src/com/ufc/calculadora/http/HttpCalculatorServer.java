@@ -11,8 +11,37 @@ public class HttpCalculatorServer {
     private final ExpressionEvaluator evaluator;
 
     public HttpCalculatorServer() {
-
         this.evaluator = new ExpressionEvaluator();
+    }
+
+    /**
+     * Retry apenas para falhas inesperadas. Não tenta para IllegalArgumentException (erro do cliente).
+     * maxAttempts: número total de tentativas (inclui a primeira).
+     * baseBackoffMs: backoff inicial (dobrando a cada tentativa), com jitter.
+     */
+    private double evaluateWithRetry(String expr, int maxAttempts, long baseBackoffMs) {
+        int attempt = 0;
+        long backoff = baseBackoffMs;
+        while (true) {
+            try {
+                return evaluator.evaluate(expr);
+            } catch (IllegalArgumentException iae) {
+                throw iae; // erro do cliente, não retry
+            } catch (Exception e) {
+                attempt++;
+                if (attempt >= maxAttempts) {
+                    throw new RuntimeException("Falha após " + attempt + " tentativas: " + e.getMessage(), e);
+                }
+                try {
+                    long jitter = (long) (Math.random() * backoff);
+                    Thread.sleep(backoff + jitter);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException("Retry interrompido", ie);
+                }
+                backoff *= 2;
+            }
+        }
     }
 
     public void start(int port) {
@@ -37,10 +66,10 @@ public class HttpCalculatorServer {
 
                 double result;
                 switch (op) {
-                    case "add" -> result = evaluator.evaluate(a + " + " + b);
-                    case "sub" -> result = evaluator.evaluate(a + " - " + b);
-                    case "mul" -> result = evaluator.evaluate(a + " * " + b);
-                    case "div" -> result = evaluator.evaluate(a + " / " + b);
+                    case "add" -> result = evaluateWithRetry(a + " + " + b, 3, 100);
+                    case "sub" -> result = evaluateWithRetry(a + " - " + b, 3, 100);
+                    case "mul" -> result = evaluateWithRetry(a + " * " + b, 3, 100);
+                    case "div" -> result = evaluateWithRetry(a + " / " + b, 3, 100);
                     default -> throw new IllegalArgumentException("Invalid operation: " + op);
                 }
 
@@ -77,7 +106,7 @@ public class HttpCalculatorServer {
 
                 String id = body.has("id") ? body.get("id").getAsString() : "unknown";
                 String expr = body.get("expr").getAsString();
-                double result = evaluator.evaluate(expr);
+                double result = evaluateWithRetry(expr, 3, 100);
 
                 resp.addProperty("id", id);
                 resp.addProperty("result", result);

@@ -38,7 +38,7 @@ public class SocketCalculatorClient {
         String host = "localhost";
         int port = 5000;
         String id = UUID.randomUUID().toString();
-        String expr = "3 / 0";
+        String expr = "3 * 3";
         JsonObject resp = request(host, port, id, expr, 5000);
         System.out.println("Response: " + GSON.toJson(resp));
     }

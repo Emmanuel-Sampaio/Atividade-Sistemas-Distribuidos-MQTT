@@ -1,16 +1,3 @@
-// server.js
-// Servidor Express para a calculadora HTTP
-// Endpoints:
-//   POST /calc/op   { id, op, a, b }   -> op in [add, sub, mul, div]
-//   POST /calc/expr { id, expr }       -> avalia expressão aritmética
-//
-// Uso:
-//   npm init -y
-//   npm install express
-//   node server.js
-//
-// Escuta na porta 8000 por padrão
-
 const express = require('express');
 const app = express();
 const PORT = process.env.PORT || 8000;
