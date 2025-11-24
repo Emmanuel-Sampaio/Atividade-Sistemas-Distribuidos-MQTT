@@ -222,27 +222,28 @@ public class HttpCalculatorClient {
         }
     }
 
-    // Demo de uso
+    // substitua o main existente em HttpCalculatorClient.java
     public static void main(String[] args) throws Exception {
-        // Aponte para o servidor HTTP que você for usar (pode ser o Spark Java ou a calculadora PHP)
-        HttpCalculatorClient client = new HttpCalculatorClient("http://localhost:8000");
-
-        String expr = "(10 + 5) * 2";
-
-        // 1) Server-side evaluate (requisição única)
-        try {
-            double serverResult = client.evaluateExpressionServerSide(expr);
-            System.out.println("Server-side evaluate: " + expr + " = " + serverResult);
-        } catch (Exception e) {
-            System.err.println("Server-side evaluate failed: " + e.getMessage());
+        String base = (args.length > 0) ? args[0] : "http://localhost:8000";
+        HttpCalculatorClient client = new HttpCalculatorClient(base);
+        Scanner sc = new Scanner(System.in);
+        System.out.println("HTTP client apontando para " + base + ". Digite expressões. 'sair' para encerrar.");
+        while (true) {
+            System.out.print("> ");
+            String line = sc.nextLine();
+            if (line == null) break;
+            line = line.trim();
+            if (line.equalsIgnoreCase("sair") || line.equalsIgnoreCase("exit")) break;
+            if (line.isEmpty()) continue;
+            try {
+                double result = client.evaluateExpressionServerSide(line);
+                System.out.println("Resultado = " + result);
+            } catch (Exception e) {
+                System.err.println("Erro: " + e.getMessage());
+            }
         }
-
-        // 2) Client-side decomposition (várias requisições /calc/op)
-        try {
-            double clientResult = client.evaluateExpressionByDecomposition(expr);
-            System.out.println("Client-side decomposition: " + expr + " = " + clientResult);
-        } catch (Exception e) {
-            System.err.println("Client-side decomposition failed: " + e.getMessage());
-        }
+        sc.close();
+        System.out.println("HTTP client encerrado.");
     }
+
 }

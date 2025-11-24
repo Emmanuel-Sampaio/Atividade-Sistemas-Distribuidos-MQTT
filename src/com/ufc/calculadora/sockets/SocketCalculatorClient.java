@@ -5,6 +5,7 @@ import com.google.gson.JsonObject;
 
 import java.io.*;
 import java.net.Socket;
+import java.util.Scanner;
 import java.util.UUID;
 
 public class SocketCalculatorClient {
@@ -33,13 +34,29 @@ public class SocketCalculatorClient {
         }
     }
 
-    // Quick manual test
+
     public static void main(String[] args) throws Exception {
-        String host = "localhost";
-        int port = 5000;
-        String id = UUID.randomUUID().toString();
-        String expr = "3 * 3";
-        JsonObject resp = request(host, port, id, expr, 5000);
-        System.out.println("Response: " + GSON.toJson(resp));
+        String host = (args.length > 0) ? args[0] : "localhost";
+        int port = (args.length > 1) ? Integer.parseInt(args[1]) : 5000;
+        int timeoutMs = 5000;
+        Scanner sc = new Scanner(System.in);
+        System.out.println("Socket client conectado a " + host + ":" + port + ". Digite expressões. 'sair' para encerrar.");
+        while (true) {
+            System.out.print("> ");
+            String line = sc.nextLine();
+            if (line == null) break;
+            line = line.trim();
+            if (line.equalsIgnoreCase("sair") || line.equalsIgnoreCase("exit")) break;
+            if (line.isEmpty()) continue;
+            String id = java.util.UUID.randomUUID().toString();
+            try {
+                JsonObject resp = request(host, port, id, line, timeoutMs);
+                System.out.println("Resp: " + GSON.toJson(resp));
+            } catch (Exception e) {
+                System.err.println("Erro: " + e.getMessage());
+            }
+        }
+        sc.close();
+        System.out.println("Socket client encerrado.");
     }
 }

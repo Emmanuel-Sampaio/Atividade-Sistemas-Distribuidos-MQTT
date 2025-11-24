@@ -6,34 +6,25 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.Scanner;
 
-
 public class RmiClient {
     public static void main(String[] args) {
         try {
             String host = (args.length > 0) ? args[0] : "localhost";
-            int port = 1099;
+            int port = (args.length > 1) ? Integer.parseInt(args[1]) : 1099;
             Registry registry = LocateRegistry.getRegistry(host, port);
             CalculatorService calc = (CalculatorService) registry.lookup("CalculatorService");
 
             System.out.println("Conectado ao CalculatorService em " + host + ":" + port);
-            System.out.println("add(2,3) = " + calc.add(2, 3));
-            System.out.println("sub(10,4) = " + calc.sub(10, 4));
-            System.out.println("mul(3,5) = " + calc.mul(3, 5));
-            try {
-                System.out.println("div(10,0) = " + calc.div(10, 0));
-            } catch (Exception e) {
-                System.out.println("div(10,0) -> erro esperado: " + e.getMessage());
-            }
 
             // Loop interativo para evaluate()
             Scanner sc = new Scanner(System.in);
-            System.out.println("\nDigite expressões para avaliar (ex: 2+3*(4-1)). 'exit' para sair.");
+            System.out.println("\nDigite expressões para avaliar (ex: 2+3*(4-1)). 'sair' ou 'exit' para encerrar.");
             while (true) {
                 System.out.print("> ");
                 String line = sc.nextLine();
                 if (line == null) break;
                 line = line.trim();
-                if (line.equalsIgnoreCase("exit")) break;
+                if (line.equalsIgnoreCase("sair") || line.equalsIgnoreCase("exit")) break;
                 if (line.isEmpty()) continue;
                 try {
                     double res = calc.evaluate(line);
@@ -43,6 +34,7 @@ public class RmiClient {
                 }
             }
             sc.close();
+            System.out.println("Cliente RMI encerrado.");
 
         } catch (Exception e) {
             System.err.println("Erro no cliente RMI: " + e.getMessage());
